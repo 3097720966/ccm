@@ -7,7 +7,6 @@ const DEFAULTS = {
     token: '',
     userId: '',
     unit: 500000,
-    useProxy: false,
     autoRefresh: false,
     pos: null,
     last: null,
@@ -25,13 +24,6 @@ const save = () => SillyTavern.getContext().saveSettingsDebounced();
 const money = (n) => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const hhmm = (t) => new Date(t).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 
-function getNativeFetch() {
-    const T = window.__TAURI__;
-    if (typeof window.fetchCORS === 'function') return window.fetchCORS.bind(window);
-    if (T && T.http && typeof T.http.fetch === 'function') return T.http.fetch.bind(T.http);
-    return null;
-}
-
 async function fetchBalance() {
     const s = S();
     // 清洗输入：去掉所有空白/换行/不可见字符，避免产生非法请求头
@@ -44,30 +36,18 @@ async function fetchBalance() {
     if (!/^https?:\/\/[^/]+/i.test(base)) {
         throw new Error('站点地址需要以 https:// 开头');
     }
-    const target = `${base}/api/user/self`;
-    const init = {
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'New-Api-User': uid,
-            'Accept': 'application/json',
-        },
-    };
 
-    // 优先用 Tauri 原生请求（不受跨域限制），其次酒馆代理，最后普通 fetch
-    const tauriFetch = getNativeFetch();
     let resp;
     try {
-        if (tauriFetch) {
-            resp = await tauriFetch(target, init);
-        } else if (s.useProxy) {
-            resp = await fetch(`/proxy/${target}`, init);
-        } else {
-            resp = await fetch(target, init);
-        }
+        resp = await fetch(`${base}/api/user/self`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'New-Api-User': uid,
+                'Accept': 'application/json',
+            },
+        });
     } catch (e) {
-        const T = window.__TAURI__;
-        const info = `Tauri=${T ? Object.keys(T).join(',') : '无'}`;
-        throw new Error(`请求失败：${e.message || e}（${info}）`);
+        throw new Error('请求失败：' + (e.message || e));
     }
 
     const text = await resp.text();
@@ -84,19 +64,13 @@ async function fetchBalance() {
     const d = body.data || {};
     const unit = Number(s.unit) || 500000;
     return {
-        username: d.username || '-',
         remain: (d.quota || 0) / unit,
-        used: (d.used_quota || 0) / unit,
-        requests: d.request_count ?? '-',
         time: Date.now(),
     };
 }
 
 function showInfo(info) {
     $('#bcx-remain').text(money(info.remain));
-    $('#bcx-used').text(money(info.used));
-    $('#bcx-req').text(Number(info.requests).toLocaleString('en-US'));
-    $('#bcx-user').text(info.username);
     $('#bcx-status').removeClass('bcx-err').text('更新于 ' + hhmm(info.time));
 }
 
@@ -196,12 +170,6 @@ function buildUI() {
                     <div class="bcx-hero-sub" id="bcx-status">尚未查询</div>
                 </div>
 
-                <div class="bcx-group">
-                    <div class="bcx-row"><span>历史消耗</span><span class="bcx-val" id="bcx-used">--</span></div>
-                    <div class="bcx-row"><span>请求次数</span><span class="bcx-val" id="bcx-req">--</span></div>
-                    <div class="bcx-row"><span>用户</span><span class="bcx-val" id="bcx-user">--</span></div>
-                </div>
-
                 <button type="button" class="bcx-btn" id="bcx-refresh">刷新余额</button>
 
                 <div class="bcx-section">设置</div>
@@ -216,12 +184,9 @@ function buildUI() {
                         <input class="bcx-input" id="bcx-unit" type="number" inputmode="numeric" placeholder="500000"></label>
                 </div>
                 <div class="bcx-group">
-                    <div class="bcx-row"><span>使用酒馆代理</span>
-                        <label class="bcx-switch"><input type="checkbox" id="bcx-proxy"><i></i></label></div>
                     <div class="bcx-row"><span>启动时自动查询</span>
                         <label class="bcx-switch"><input type="checkbox" id="bcx-auto"><i></i></label></div>
                 </div>
-                <div class="bcx-foot">额度换算：多少额度等于 $1，默认 500000。<br>令牌只保存在你自己的酒馆设置里。</div>
             </div>
         </div>`);
 
@@ -235,7 +200,6 @@ function buildUI() {
     $('#bcx-token').val(s.token).on('input', function () { s.token = this.value; save(); });
     $('#bcx-uid').val(s.userId).on('input', function () { s.userId = this.value; save(); });
     $('#bcx-unit').val(s.unit).on('input', function () { s.unit = Number(this.value) || 500000; save(); });
-    $('#bcx-proxy').prop('checked', s.useProxy).on('change', function () { s.useProxy = this.checked; save(); });
     $('#bcx-auto').prop('checked', s.autoRefresh).on('change', function () { s.autoRefresh = this.checked; save(); });
 
     placeFab();
