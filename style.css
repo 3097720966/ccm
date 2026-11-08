@@ -1,0 +1,147 @@
+/* ===== 悬浮按钮 ===== */
+#bcx-fab {
+    position: fixed;
+    z-index: 99998;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: pointer;
+}
+#bcx-fab img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+}
+#bcx-fab .bcx-fab-fallback { display: none; font-size: 26px; }
+
+/* ===== 面板：固定浅色 iOS 风格，所有文字显式指定颜色 ===== */
+body.bcx-lock { overflow: hidden; }
+
+#bcx-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    background: rgba(0, 0, 0, .35);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+}
+#bcx-overlay.bcx-show { display: flex; }
+
+#bcx-overlay .bcx-sheet {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 440px;
+    max-height: 88vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+    background: #f2f2f7;
+    color: #000;
+    border-radius: 22px 22px 0 0;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+    font-size: 16px;
+    line-height: 1.4;
+    animation: bcx-up .28s cubic-bezier(.2, .8, .2, 1);
+}
+@keyframes bcx-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+@media (min-width: 600px) {
+    #bcx-overlay { align-items: center; }
+    #bcx-overlay .bcx-sheet { border-radius: 22px; padding-bottom: 20px; }
+}
+
+#bcx-overlay .bcx-grab {
+    width: 38px; height: 5px; border-radius: 3px;
+    background: #c7c7cc; margin: 4px auto 10px;
+}
+#bcx-overlay .bcx-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px;
+}
+#bcx-overlay .bcx-title { font-size: 20px; font-weight: 700; color: #000; }
+#bcx-overlay .bcx-done {
+    background: none !important; border: none !important; box-shadow: none !important;
+    color: #007aff !important; font-size: 17px; font-weight: 600; padding: 4px 2px; cursor: pointer;
+}
+
+#bcx-overlay .bcx-hero {
+    background: #fff; border-radius: 14px; padding: 18px 16px; text-align: center; margin-bottom: 12px;
+}
+#bcx-overlay .bcx-hero-label { color: #6c6c70; font-size: 14px; }
+#bcx-overlay .bcx-hero-num {
+    color: #000; font-size: 40px; font-weight: 700; letter-spacing: -.5px;
+    font-variant-numeric: tabular-nums; margin: 2px 0;
+}
+#bcx-overlay .bcx-hero-sub { color: #8e8e93; font-size: 13px; }
+#bcx-overlay .bcx-hero-sub.bcx-err { color: #ff3b30; }
+
+#bcx-overlay .bcx-group {
+    background: #fff; border-radius: 12px; overflow: hidden; margin-bottom: 12px;
+}
+#bcx-overlay .bcx-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    min-height: 44px; padding: 8px 16px; margin: 0;
+    color: #000;
+    border-bottom: .5px solid #e5e5ea;
+}
+#bcx-overlay .bcx-row:last-child { border-bottom: none; }
+#bcx-overlay .bcx-row > span:first-child { flex: none; color: #000; }
+#bcx-overlay .bcx-val { color: #6c6c70; font-variant-numeric: tabular-nums; text-align: right; }
+
+/* 输入框：浅底深字，强制覆盖酒馆主题，保证看得见 */
+#bcx-overlay input.bcx-input {
+    flex: 1; min-width: 0; width: auto; height: auto;
+    box-sizing: border-box;
+    padding: 6px 10px; margin: 0;
+    background: #f2f2f7 !important;
+    color: #000 !important;
+    -webkit-text-fill-color: #000 !important;
+    caret-color: #007aff;
+    border: none !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    outline: none !important;
+    text-align: right;
+    font-size: 16px;   /* 16px 以上 iOS 才不会自动放大页面 */
+}
+#bcx-overlay input.bcx-input::placeholder { color: #a1a1a6 !important; -webkit-text-fill-color: #a1a1a6 !important; }
+
+#bcx-overlay .bcx-btn {
+    display: block; width: 100%; padding: 13px; margin: 0 0 14px;
+    background: #007aff !important; color: #fff !important;
+    border: none !important; border-radius: 12px !important; box-shadow: none !important;
+    font-size: 17px; font-weight: 600; cursor: pointer;
+}
+#bcx-overlay .bcx-btn.bcx-loading { opacity: .6; }
+
+#bcx-overlay .bcx-section {
+    color: #6c6c70; font-size: 13px; text-transform: uppercase;
+    padding: 0 16px 6px;
+}
+#bcx-overlay .bcx-foot { color: #8e8e93; font-size: 12.5px; padding: 0 16px; text-align: left; }
+
+/* iOS 开关 */
+#bcx-overlay .bcx-switch { position: relative; width: 51px; height: 31px; flex: none; margin: 0; display: block; }
+#bcx-overlay .bcx-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+#bcx-overlay .bcx-switch i {
+    position: absolute; inset: 0; border-radius: 16px; background: #e5e5ea; transition: background .2s;
+}
+#bcx-overlay .bcx-switch i::after {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%;
+    background: #fff; box-shadow: 0 2px 4px rgba(0, 0, 0, .3); transition: transform .2s;
+}
+#bcx-overlay .bcx-switch input:checked + i { background: #34c759; }
+#bcx-overlay .bcx-switch input:checked + i::after { transform: translateX(20px); }
