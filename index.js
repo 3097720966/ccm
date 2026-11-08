@@ -53,18 +53,20 @@ async function fetchBalance() {
         if (s.useProxy) throw new Error('请求失败：' + (e.message || e) + '（请确认酒馆已开启 enableCorsProxy）');
         throw new Error('请求失败，可能是跨域限制，可打开「使用酒馆代理」后重试');
     }
-    const raw = await resp.text();
-    if (!resp.ok) throw new Error(`请求失败（HTTP ${resp.status}）：${raw.slice(0, 80)}`);
+
+    const text = await resp.text();
     let body;
     try {
-        body = JSON.parse(raw);
-    } catch (e) {
-        const head = raw.trim().slice(0, 60).replace(/\s+/g, ' ');
-        const hint = s.useProxy
-            ? '酒馆代理可能没开启（config.yaml 里 enableCorsProxy 需为 true，改完要重启），或被站点的防护拦截'
-            : '站点返回了非 JSON 内容';
-        throw new Error(`返回的不是 JSON：${head || '（空）'}。${hint}`);
+        body = JSON.parse(text);
+    } catch (_) {
+        const snippet = text.replace(/\s+/g, ' ').slice(0, 60);
+        throw new Error(
+            s.useProxy
+                ? `代理返回的不是 JSON（HTTP ${resp.status}）：${snippet}。请检查酒馆 config.yaml 的 enableCorsProxy 并重启`
+                : `返回的不是 JSON（HTTP ${resp.status}）：${snippet}`
+        );
     }
+    if (!resp.ok) throw new Error(body.message || `请求失败（HTTP ${resp.status}）`);
     if (body.success === false) throw new Error(body.message || '接口返回失败');
 
     const d = body.data || {};
