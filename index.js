@@ -25,6 +25,13 @@ const save = () => SillyTavern.getContext().saveSettingsDebounced();
 const money = (n) => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const hhmm = (t) => new Date(t).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 
+function getNativeFetch() {
+    const T = window.__TAURI__;
+    if (typeof window.fetchCORS === 'function') return window.fetchCORS.bind(window);
+    if (T && T.http && typeof T.http.fetch === 'function') return T.http.fetch.bind(T.http);
+    return null;
+}
+
 async function fetchBalance() {
     const s = S();
     // 清洗输入：去掉所有空白/换行/不可见字符，避免产生非法请求头
@@ -38,20 +45,29 @@ async function fetchBalance() {
         throw new Error('站点地址需要以 https:// 开头');
     }
     const target = `${base}/api/user/self`;
-    const url = s.useProxy ? `/proxy/${target}` : target;
+    const init = {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'New-Api-User': uid,
+            'Accept': 'application/json',
+        },
+    };
 
+    // 优先用 Tauri 原生请求（不受跨域限制），其次酒馆代理，最后普通 fetch
+    const tauriFetch = getNativeFetch();
     let resp;
     try {
-        resp = await fetch(url, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'New-Api-User': uid,
-                'Accept': 'application/json',
-            },
-        });
+        if (tauriFetch) {
+            resp = await tauriFetch(target, init);
+        } else if (s.useProxy) {
+            resp = await fetch(`/proxy/${target}`, init);
+        } else {
+            resp = await fetch(target, init);
+        }
     } catch (e) {
-        if (s.useProxy) throw new Error('请求失败：' + (e.message || e) + '（请确认酒馆已开启 enableCorsProxy）');
-        throw new Error('请求失败，可能是跨域限制，可打开「使用酒馆代理」后重试');
+        const T = window.__TAURI__;
+        const info = `Tauri=${T ? Object.keys(T).join(',') : '无'}`;
+        throw new Error(`请求失败：${e.message || e}（${info}）`);
     }
 
     const text = await resp.text();
@@ -60,11 +76,7 @@ async function fetchBalance() {
         body = JSON.parse(text);
     } catch (_) {
         const snippet = text.replace(/\s+/g, ' ').slice(0, 60);
-        throw new Error(
-            s.useProxy
-                ? `代理返回的不是 JSON（HTTP ${resp.status}）：${snippet}。请检查酒馆 config.yaml 的 enableCorsProxy 并重启`
-                : `返回的不是 JSON（HTTP ${resp.status}）：${snippet}`
-        );
+        throw new Error(`返回的不是 JSON（HTTP ${resp.status}）：${snippet}`);
     }
     if (!resp.ok) throw new Error(body.message || `请求失败（HTTP ${resp.status}）`);
     if (body.success === false) throw new Error(body.message || '接口返回失败');
