@@ -27,9 +27,15 @@ const hhmm = (t) => new Date(t).toLocaleTimeString('zh-CN', { hour: '2-digit', m
 
 async function fetchBalance() {
     const s = S();
-    const base = s.baseUrl.trim().replace(/\/+$/, '');
-    if (!base || !s.token.trim() || !String(s.userId).trim()) {
+    // 清洗输入：去掉所有空白/换行/不可见字符，避免产生非法请求头
+    const base = s.baseUrl.replace(/\s+/g, '').replace(/\/+$/, '');
+    const token = s.token.replace(/^\s*Bearer\s+/i, '').replace(/[^\x21-\x7E]/g, '');
+    const uid = String(s.userId).replace(/\D/g, '');
+    if (!base || !token || !uid) {
         throw new Error('请先在下方填写站点地址、访问令牌和用户 ID');
+    }
+    if (!/^https?:\/\/[^/]+/i.test(base)) {
+        throw new Error('站点地址需要以 https:// 开头');
     }
     const target = `${base}/api/user/self`;
     const url = s.useProxy ? `/proxy/${target}` : target;
@@ -38,12 +44,13 @@ async function fetchBalance() {
     try {
         resp = await fetch(url, {
             headers: {
-                'Authorization': `Bearer ${s.token.trim()}`,
-                'New-Api-User': String(s.userId).trim(),
+                'Authorization': `Bearer ${token}`,
+                'New-Api-User': uid,
                 'Accept': 'application/json',
             },
         });
     } catch (e) {
+        if (s.useProxy) throw new Error('请求失败：' + (e.message || e) + '（请确认酒馆已开启 enableCorsProxy）');
         throw new Error('请求失败，可能是跨域限制，可打开「使用酒馆代理」后重试');
     }
     if (!resp.ok) throw new Error(`请求失败（HTTP ${resp.status}）`);
