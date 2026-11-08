@@ -53,8 +53,18 @@ async function fetchBalance() {
         if (s.useProxy) throw new Error('请求失败：' + (e.message || e) + '（请确认酒馆已开启 enableCorsProxy）');
         throw new Error('请求失败，可能是跨域限制，可打开「使用酒馆代理」后重试');
     }
-    if (!resp.ok) throw new Error(`请求失败（HTTP ${resp.status}）`);
-    const body = await resp.json();
+    const raw = await resp.text();
+    if (!resp.ok) throw new Error(`请求失败（HTTP ${resp.status}）：${raw.slice(0, 80)}`);
+    let body;
+    try {
+        body = JSON.parse(raw);
+    } catch (e) {
+        const head = raw.trim().slice(0, 60).replace(/\s+/g, ' ');
+        const hint = s.useProxy
+            ? '酒馆代理可能没开启（config.yaml 里 enableCorsProxy 需为 true，改完要重启），或被站点的防护拦截'
+            : '站点返回了非 JSON 内容';
+        throw new Error(`返回的不是 JSON：${head || '（空）'}。${hint}`);
+    }
     if (body.success === false) throw new Error(body.message || '接口返回失败');
 
     const d = body.data || {};
